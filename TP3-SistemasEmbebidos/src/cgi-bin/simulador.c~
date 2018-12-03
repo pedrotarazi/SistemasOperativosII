@@ -1,0 +1,52 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/sem.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+
+int main(int argc, char **argv)
+{
+	FILE *archivoOrigen, *archivoDestino;
+ 	char buffer[150];
+ 	
+	key_t Llave;
+	int semaforo;
+	struct sembuf Operacion;
+	
+	Llave = ftok ("memoria.csv", 33);
+	if( Llave == (key_t)-1){
+		printf("No pudo conseguir llave de semaforo\n");
+		return 0;
+	}
+	
+	semaforo = semget(Llave,1,0600|IPC_CREAT);
+	if(semaforo==-1){
+		printf("No pudo crear semaforo\n");
+		return 0;
+	}
+	
+	semctl(semaforo,0,SETVAL,1);
+	Operacion.sem_num=0;
+	Operacion.sem_flg=0;
+
+	while(1){		//lee línea por línea guardándola en la variable buffer hasta llegar a la línea especifica
+		archivoOrigen = fopen ( "registro.csv", "r" ); 
+		fgets(buffer,150,archivoOrigen);
+		fgets(buffer,150,archivoOrigen);
+		while(!feof(archivoOrigen)){
+			Operacion.sem_op=-1;
+			semop(semaforo, &Operacion,1);
+			archivoDestino = fopen ( "memoria.csv", "a" );
+			printf("Dato...%s",buffer);
+			fputs(buffer,archivoDestino);
+			fgets(buffer,150,archivoOrigen);
+			Operacion.sem_op=1;
+			semop(semaforo,&Operacion,1);
+			sleep(1);			
+			fclose(archivoDestino);
+		}
+		rewind(archivoOrigen);
+	}
+	fclose(archivoOrigen);
+	
+}

@@ -1,0 +1,73 @@
+#include <stdio.h>
+#include <string.h>
+#include <sys/sem.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+
+void get_telemetry();
+int main(int argc, char *argv[])
+{
+	printf(
+			"Context-type:text/html\n\n"
+			"<head>\n"
+				"<title>\n"
+					"get_telemetry\n"
+				"</title>\n"
+			"</head>\n"
+			"<body bgcolor='C4FE67'>\n"
+				"<header>\n"
+					"<hgroup>\n"
+						"<h1 style='text-align:center;'><u><b>SISTEMAS OPERATIVOS II</b></u></h1>\n"
+						"<h2 style='text-align:center;'><b>Ultimo Dato Sensado</b></h2>\n"
+					"</hgroup>\n"
+				"</header>\n");
+	get_telemetry();
+	printf(	
+			"</body>\n"
+		"</html>\n"	
+	);
+	return 0;
+}
+
+void get_telemetry(){
+	FILE *archivo;
+	char buf[256];
+
+	key_t Llave;                                
+        int semaforo;                                                               
+        struct sembuf Operacion;                                                    
+                                                     
+        Llave = ftok ("/bin/ls", 33);               
+        if (Llave == (key_t)-1){                                                    
+                printf("No pudo conseguir llave de semaforo\n");                    
+                return;                              
+        }                                          
+                                            
+        semaforo = semget(Llave, 1, IPC_CREAT |0600);           
+        if( semaforo==-1)                                                           
+        {                                                                           
+                printf("No puedo crear semaforo\n"); 
+                return;                                         
+        }                                            
+        semctl(semaforo,1,SETVAL,0); 
+                                                    
+        Operacion.sem_num=0;                                    
+        Operacion.sem_flg=0;
+        Operacion.sem_op=11;         
+        semop(semaforo,&Operacion,1);               
+
+	archivo = fopen ( "memoria.csv", "r" ); 
+	if (archivo == NULL){
+		printf("  Error de apertura del archivo. \n");
+	}
+	else{
+		while(!feof(archivo)){					//se asegura de que no haya llegado al final del archivo 
+			fgets(buf,150,archivo);			//lee una linea y la guarda.
+		}			
+		printf("<h3><i><font color='blue'>%s</font></i><h3>", buf);
+	}
+	fclose ( archivo );
+	Operacion.sem_op=-1;
+	semop(semaforo,&Operacion,1);
+	return;
+}
